@@ -10,6 +10,8 @@ const MODELES = [
   'gemini-3.5-flash',
 ];
 
+const attendre = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function genererEpreuves(
   imagesBase64: string[],
   matiere: string,
@@ -19,15 +21,24 @@ export async function genererEpreuves(
   const prompt = `Tu es un enseignant expert de ${niveau} en ${matiere}.
 Notions à travailler : ${notions}.
 
-À partir des images du cahier fournies, génère 5 épreuves de difficulté croissante :
+À partir des images du cahier fournies, génère EXACTEMENT 5 épreuves de difficulté croissante.
 
-- Épreuve 1 - Base : exercices directs.
-- Épreuve 2 - Consolidation : formulations variées.
-- Épreuve 3 - Mélangée : notions mélangées.
-- Épreuve 4 - Pièges : données inutiles.
-- Épreuve 5 - Examen réel : proche du vrai contrôle.
+RÈGLES STRICTES :
+- Commence DIRECTEMENT par "## Épreuve 1", sans aucune introduction ni phrase avant.
+- N'ajoute AUCUN texte avant, entre, ou après les épreuves.
+- Titre EXACT pour chaque épreuve (respecte les mots) :
+  - "## Épreuve 1 - Base"
+  - "## Épreuve 2 - Consolidation"
+  - "## Épreuve 3 - Mélangée"
+  - "## Épreuve 4 - Pièges"
+  - "## Épreuve 5 - Examen réel"
 
-Pour chaque épreuve : durée, barème /20, corrigé détaillé.
+Pour CHAQUE épreuve, respecte cette structure :
+- Durée
+- Barème /20
+- Sujet pour l'élève (exercices numérotés)
+- Corrigé détaillé
+
 Vocabulaire adapté à un enfant de ${niveau}.`;
 
   const contents: any[] = [{ text: prompt }];
@@ -40,21 +51,24 @@ Vocabulaire adapté à un enfant de ${niveau}.`;
 
   let derniereErreur: any = null;
 
-  for (const modele of MODELES) {
-    try {
-      const response = await ai.models.generateContent({
-        model: modele,
-        contents: contents,
-      });
-      return response.text;
-    } catch (err) {
-      derniereErreur = err;
-      console.log(`Modèle ${modele} indisponible, essai suivant...`);
+  for (let tour = 0; tour < 2; tour++) {
+    for (const modele of MODELES) {
+      try {
+        console.log(`Tentative : ${modele} (tour ${tour + 1})`);
+        const response = await ai.models.generateContent({
+          model: modele,
+          contents: contents,
+        });
+        return response.text;
+      } catch (err) {
+        derniereErreur = err;
+        console.log(`❌ ${modele} échoué`);
+      }
     }
+    if (tour === 0) await attendre(5000);
   }
 
   throw new Error(
-    'Tous les modèles sont saturés en ce moment. Réessaie dans 1-2 minutes. Détail : ' +
-      String(derniereErreur)
+    'Tous les modèles sont saturés. Réessaie dans 1-2 minutes.\n' + String(derniereErreur)
   );
 }
