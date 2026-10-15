@@ -5,11 +5,16 @@ const ai = new GoogleGenAI({ apiKey });
 
 const MODELES = ['gemini-3.5-flash', 'gemini-3.8-flash'];
 
-export async function genererEpreuves(
+const timeout = (ms: number) => new Promise((_, reject) =>
+  setTimeout(() => reject(new Error('Timeout')), ms)
+);
+
+export async function genererEpreuvesStream(
   imagesBase64: string[],
   matiere: string,
   niveau: string,
-  notions: string
+  notions: string,
+  onChunk: (texte: string) => void
 ): Promise<string> {
   const prompt = `Enseignant ${niveau} en ${matiere}. Notions : ${notions}.
 
@@ -30,16 +35,27 @@ Vocabulaire adapté à ${niveau}. Sois concis.`;
 
   for (const modele of MODELES) {
     try {
-      const response = await ai.models.generateContent({
-        model: modele,
-        contents: contents,
-      });
-      return response.text;
+      console.log(`⏱️ Stream ${modele}...`);
+      const stream = await Promise.race([
+        ai.models.generateContentStream({ model: modele, contents }),
+        timeout(15000),
+      ]) as any;
+
+      let texte = '';
+      for await (const chunk of stream) {
+        const t = chunk.text || '';
+        if (t) {
+          texte += t;
+          onChunk(texte);
+        }
+      }
+      console.log(`✅ ${modele} terminé`);
+      return texte;
     } catch (err) {
       derniereErreur = err;
       console.log(`❌ ${modele} échoué`);
     }
   }
 
-  throw new Error('Modèles saturés. Réessaie dans 1 min.\n' + String(derniereErreur));
+  throw new Error('Modèles saturés. Réessaie.\n' + String(derniereErreur));
 }
