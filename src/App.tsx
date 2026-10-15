@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { genererEpreuvesStream } from './lib/gemini';
 import { supabase, getVisiteurId } from './lib/supabase';
 import Coach from './Coach';
+import Examen from './Examen';
 
 const MATIERES = ['Maths', 'Français', 'Sciences', 'Histoire-Géo', 'Anglais'];
 const NIVEAUX = ['CP', 'CE1', 'CE2', 'CM1', 'CM2', '6e', '5e', '4e', '3e'];
@@ -59,18 +60,20 @@ function compresserImage(file: File): Promise<string> {
   });
 }
 
+type Mode = 'epreuves' | 'coach' | 'examen';
+
 export default function App() {
-  const [mode, setMode] = useState<'epreuves' | 'coach'>('epreuves');
+  const [mode, setMode] = useState<Mode>('epreuves');
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         <h1 className="text-center text-2xl sm:text-3xl font-bold text-indigo-800 mb-6">📚 Tuteur IA</h1>
 
-        <div className="flex gap-2 mb-6 bg-white rounded-2xl p-2 shadow">
+        <div className="flex gap-1 mb-6 bg-white rounded-2xl p-2 shadow">
           <button
             onClick={() => setMode('epreuves')}
-            className={`flex-1 py-3 rounded-xl font-semibold transition ${
+            className={`flex-1 py-2 sm:py-3 rounded-xl font-semibold transition text-xs sm:text-base ${
               mode === 'epreuves' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -78,15 +81,25 @@ export default function App() {
           </button>
           <button
             onClick={() => setMode('coach')}
-            className={`flex-1 py-3 rounded-xl font-semibold transition ${
+            className={`flex-1 py-2 sm:py-3 rounded-xl font-semibold transition text-xs sm:text-base ${
               mode === 'coach' ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             🎓 Coach
           </button>
+          <button
+            onClick={() => setMode('examen')}
+            className={`flex-1 py-2 sm:py-3 rounded-xl font-semibold transition text-xs sm:text-base ${
+              mode === 'examen' ? 'bg-orange-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            📅 Examen
+          </button>
         </div>
 
-        {mode === 'epreuves' ? <Epreuves /> : <Coach />}
+        {mode === 'epreuves' && <Epreuves />}
+        {mode === 'coach' && <Coach />}
+        {mode === 'examen' && <Examen />}
       </div>
     </main>
   );
